@@ -1,13 +1,9 @@
 const Service = require('../models/Service');
 const Category = require('../models/Category');
 
-// @desc    Get all services for logged-in provider
-// @route   GET /api/services
-// @access  Private
 exports.getServices = async (req, res) => {
     try {
         const { search } = req.query;
-        // Spec says: /api/services?category=...&search=...
         const categoryParam = req.query.category || req.query.category_id;
         const page = Math.max(parseInt(req.query.page || '1', 10), 1);
         const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 100);
@@ -44,10 +40,6 @@ exports.getServices = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
-
-// @desc    Create new service
-// @route   POST /api/services
-// @access  Private
 exports.createService = async (req, res) => {
     try {
         const { service_name, category_id, base_price, vat_percent, discount_amount, image } = req.body;
@@ -56,7 +48,6 @@ exports.createService = async (req, res) => {
             return res.status(400).json({ message: 'Please fill required fields' });
         }
 
-        // Verify category ownership
         const category = await Category.findById(category_id);
         if (!category || category.provider.toString() !== req.user.id) {
             return res.status(400).json({ message: 'Invalid category' });
@@ -78,9 +69,6 @@ exports.createService = async (req, res) => {
     }
 };
 
-// @desc    Update service
-// @route   PUT /api/services/:id
-// @access  Private
 exports.updateService = async (req, res) => {
     try {
         let service = await Service.findById(req.params.id);
@@ -93,10 +81,26 @@ exports.updateService = async (req, res) => {
             return res.status(401).json({ message: 'Not authorized' });
         }
 
-        service = await Service.findByIdAndUpdate(req.params.id, req.body, {
+        // Prepare updates: if frontend sent `category_id`, map it to `category`
+        const updates = { ...req.body };
+
+        console.log('Updating service', req.params.id, 'with', updates); // DEBUG
+
+        if (updates.category_id) {
+            const category = await Category.findById(updates.category_id);
+            if (!category || category.provider.toString() !== req.user.id) {
+                return res.status(400).json({ message: 'Invalid category' });
+            }
+            updates.category = updates.category_id;
+            delete updates.category_id;
+        }
+
+        service = await Service.findByIdAndUpdate(req.params.id, updates, {
             new: true,
             runValidators: true
         });
+
+        console.log('Service updated result:', service); // DEBUG
 
         res.json(service);
     } catch (error) {
@@ -104,9 +108,6 @@ exports.updateService = async (req, res) => {
     }
 };
 
-// @desc    Delete service
-// @route   DELETE /api/services/:id
-// @access  Private
 exports.deleteService = async (req, res) => {
     try {
         const service = await Service.findById(req.params.id);

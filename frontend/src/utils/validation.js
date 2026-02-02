@@ -18,14 +18,12 @@ export function validateLength(value, { min, max } = {}, fieldLabel = 'This fiel
 
 export function validateEmail(value) {
   if (isBlank(value)) return '';
-  // Simple, pragmatic email check (backend should still validate).
   const ok = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value).trim());
   return ok ? '' : 'Please enter a valid email address.';
 }
 
 export function validatePhoneE164(value, fieldLabel = 'Phone number') {
   if (isBlank(value)) return '';
-  // react-phone-number-input stores phone in E.164 format like +14155552671
   try {
     return isValidPhoneNumber(value) ? '' : `Please enter a valid ${fieldLabel} (include country code).`;
   } catch {
@@ -57,7 +55,6 @@ export function validatePassword(value, {
   if (requireUpper && !/[A-Z]/.test(v)) return 'Password must include at least 1 uppercase letter (A-Z).';
   if (requireLower && !/[a-z]/.test(v)) return 'Password must include at least 1 lowercase letter (a-z).';
   if (requireNumber && !/[0-9]/.test(v)) return 'Password must include at least 1 number (0-9).';
-  // Special characters: anything that's not a letter/number/underscore
   if (requireSpecial && !/[^\w\s]/.test(v)) return 'Password must include at least 1 special character (e.g. !@#$%).';
   return '';
 }
