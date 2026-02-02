@@ -68,9 +68,21 @@ const Requests = () => {
                                             Services: {req.services.map(s => s.service_name).join(', ')}
                                         </p>
                                     </div>
-                                    <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                    <div className="mt-2 flex flex-col items-end text-sm text-gray-500 sm:mt-0">
                                         <p>
                                             {new Date(req.createdAt).toLocaleDateString()}
+                                        </p>
+                                        <p className="mt-1 font-semibold text-gray-900">
+                                            Total:{' '}
+                                            {req.services && req.services.length > 0
+                                                ? `$${req.services
+                                                    .reduce((sum, s) => sum + (Number(s.total_price) ||
+                                                        ((Number(s.base_price) || 0) +
+                                                            (Number(s.base_price || 0) * Number(s.vat_percent || 0) / 100) -
+                                                            (Number(s.discount_amount) || 0)
+                                                        )), 0)
+                                                    .toFixed(2)}`
+                                                : '$0.00'}
                                         </p>
                                     </div>
                                 </div>

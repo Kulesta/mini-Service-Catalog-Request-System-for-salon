@@ -6,14 +6,29 @@ const Category = require('../models/Category');
 exports.getCategories = async (req, res) => {
     try {
         const { search } = req.query;
+        const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 100);
+        const skip = (page - 1) * limit;
         let query = { provider: req.user.id };
 
         if (search) {
             query.title = { $regex: search, $options: 'i' };
         }
 
-        const categories = await Category.find(query).sort({ createdAt: -1 });
-        res.json(categories);
+        const [total, categories] = await Promise.all([
+            Category.countDocuments(query),
+            Category.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit)
+        ]);
+
+        res.json({
+            data: categories,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }

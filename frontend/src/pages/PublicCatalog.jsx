@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
+import 'react-phone-number-input/style.css';
+import PhoneInput from 'react-phone-number-input';
+import { validateLength, validatePhoneE164, validateRequired } from '../utils/validation';
 
 const PublicCatalog = () => {
-    const { providerId } = useParams();
+    const { providerId, slug } = useParams();
     const [provider, setProvider] = useState(null);
     const [catalog, setCatalog] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -13,12 +16,15 @@ const PublicCatalog = () => {
         customerPhone: '',
         customerNote: ''
     });
+    const [fieldErrors, setFieldErrors] = useState({});
     const [submitted, setSubmitted] = useState(false);
 
     useEffect(() => {
         const fetchCatalog = async () => {
             try {
-                const res = await api.get(`/public/${providerId}`);
+                const res = slug
+                    ? await api.get(`/public/services/${slug}`)
+                    : await api.get(`/public/${providerId}`);
                 setProvider(res.data.provider);
                 setCatalog(res.data.catalog);
                 setLoading(false);
@@ -28,10 +34,10 @@ const PublicCatalog = () => {
             }
         };
 
-        if (providerId) {
+        if (slug || providerId) {
             fetchCatalog();
         }
-    }, [providerId]);
+    }, [providerId, slug]);
 
     const toggleService = (serviceId) => {
         if (selectedServices.includes(serviceId)) {
@@ -41,11 +47,36 @@ const PublicCatalog = () => {
         }
     };
 
+    const selectedTotal = catalog
+        .flatMap(c => c.services || [])
+        .filter(s => selectedServices.includes(s._id))
+        .reduce((sum, s) => sum + (Number(s.total_price) || 0), 0);
+
+    const validateRequest = (data) => {
+        const errs = {};
+        errs.customerName =
+            validateRequired(data.customerName, 'Your name') ||
+            validateLength(data.customerName, { min: 2, max: 80 }, 'Your name');
+
+        // Using E.164 via PhoneInput (includes country code like +1...)
+        errs.customerPhone =
+            validateRequired(data.customerPhone, 'Phone number') ||
+            validatePhoneE164(data.customerPhone, 'phone number');
+
+        Object.keys(errs).forEach((k) => {
+            if (!errs[k]) delete errs[k];
+        });
+        return errs;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const errs = validateRequest(requestForm);
+        setFieldErrors(errs);
+        if (Object.keys(errs).length > 0) return;
         try {
             await api.post('/public/request', {
-                providerId,
+                providerId: provider?._id || providerId,
                 serviceIds: selectedServices,
                 ...requestForm
             });
@@ -101,7 +132,26 @@ const PublicCatalog = () => {
                                                     />
                                                     <div className="ml-3">
                                                         <p className="text-sm font-medium text-gray-900">{service.service_name}</p>
-                                                        <p className="text-sm text-gray-500">${service.total_price.toFixed(2)}</p>
+                                                        {Number(service.discount_amount) > 0 ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-sm text-gray-500">
+                                                                    <span className="line-through">
+                                                                        ${(
+                                                                            Number(service.base_price) +
+                                                                            (Number(service.base_price) * Number(service.vat_percent || 0) / 100)
+                                                                        ).toFixed(2)}
+                                                                    </span>
+                                                                    <span className="ml-2 font-semibold text-gray-900">
+                                                                        ${Number(service.total_price).toFixed(2)}
+                                                                    </span>
+                                                                </p>
+                                                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                                    -${Number(service.discount_amount).toFixed(2)}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-sm text-gray-500">${Number(service.total_price).toFixed(2)}</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </li>
@@ -122,6 +172,18 @@ const PublicCatalog = () => {
                                         <p className="text-sm text-gray-500">Selected Services: {selectedServices.length}</p>
                                     </div>
 
+                                    <div className="mb-4 p-3 bg-gray-50 border rounded">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-medium text-gray-700">Selected Total</span>
+                                            <span className="text-lg font-bold text-gray-900">
+                                                ${selectedTotal.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Includes VAT and discounts where applicable.
+                                        </p>
+                                    </div>
+
                                     <form onSubmit={handleSubmit}>
                                         <div className="space-y-4">
                                             <div>
@@ -131,18 +193,33 @@ const PublicCatalog = () => {
                                                     required
                                                     className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
                                                     value={requestForm.customerName}
-                                                    onChange={e => setRequestForm({ ...requestForm, customerName: e.target.value })}
+                                                    onChange={e => {
+                                                        setRequestForm({ ...requestForm, customerName: e.target.value });
+                                                        if (fieldErrors.customerName) {
+                                                            setFieldErrors(prev => ({ ...prev, customerName: '' }));
+                                                        }
+                                                    }}
                                                 />
+                                                {fieldErrors.customerName && (
+                                                    <p className="mt-1 text-sm text-red-600">{fieldErrors.customerName}</p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                                                <input
-                                                    type="tel"
-                                                    required
-                                                    className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
+                                                <PhoneInput
+                                                    defaultCountry="US"
                                                     value={requestForm.customerPhone}
-                                                    onChange={e => setRequestForm({ ...requestForm, customerPhone: e.target.value })}
+                                                    onChange={(value) => {
+                                                        setRequestForm({ ...requestForm, customerPhone: value || '' });
+                                                        if (fieldErrors.customerPhone) {
+                                                            setFieldErrors(prev => ({ ...prev, customerPhone: '' }));
+                                                        }
+                                                    }}
+                                                    className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md py-2 px-3 border"
                                                 />
+                                                {fieldErrors.customerPhone && (
+                                                    <p className="mt-1 text-sm text-red-600">{fieldErrors.customerPhone}</p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">Notes (Optional)</label>

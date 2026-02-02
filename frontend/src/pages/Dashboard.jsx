@@ -16,12 +16,12 @@ const Dashboard = () => {
                     </div>
                     <div className="mt-5">
                         <a
-                            href={`/public/${user?._id}`}
+                            href={user?.slug ? `/services/${user.slug}` : `/public/${user?._id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-500 text-lg font-medium"
                         >
-                            {window.location.origin}/public/{user?._id}
+                            {user?.slug ? `${window.location.origin}/services/${user.slug}` : `${window.location.origin}/public/${user?._id}`}
                         </a>
                     </div>
                 </div>

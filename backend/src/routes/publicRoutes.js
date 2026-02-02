@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { getProviderServices, submitRequest } = require('../controllers/publicController');
+const { getProviderServices, getProviderServicesBySlug, submitRequest } = require('../controllers/publicController');
 
+router.get('/services/:slug', getProviderServicesBySlug);
 router.get('/:providerId', getProviderServices);
 router.post('/request', submitRequest);
 

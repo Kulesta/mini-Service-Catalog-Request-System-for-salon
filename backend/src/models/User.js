@@ -1,5 +1,14 @@
 const mongoose = require('mongoose');
 
+function slugify(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/['"]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
 const userSchema = new mongoose.Schema({
     full_name: {
         type: String,
@@ -25,6 +34,12 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    slug: {
+        type: String,
+        trim: true,
+        unique: true,
+        index: true
+    },
     license_number: {
         type: String,
         required: true,
@@ -36,5 +51,12 @@ const userSchema = new mongoose.Schema({
         default: 'provider'
     }
 }, { timestamps: true });
+
+userSchema.pre('validate', function (next) {
+    if (!this.slug && this.company_name) {
+        this.slug = slugify(this.company_name);
+    }
+    next();
+});
 
 module.exports = mongoose.model('User', userSchema);

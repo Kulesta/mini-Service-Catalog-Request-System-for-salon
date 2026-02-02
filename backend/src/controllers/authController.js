@@ -50,6 +50,7 @@ exports.registerUser = async (req, res) => {
                 full_name: user.full_name,
                 email: user.email,
                 company_name: user.company_name,
+                slug: user.slug,
                 token: generateToken(user.id),
                 message: "Registration successful"
             });
@@ -78,6 +79,7 @@ exports.loginUser = async (req, res) => {
                 full_name: user.full_name,
                 email: user.email,
                 company_name: user.company_name,
+                slug: user.slug,
                 token: generateToken(user.id)
             });
         } else {

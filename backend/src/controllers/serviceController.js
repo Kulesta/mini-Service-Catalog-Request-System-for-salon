@@ -6,22 +6,40 @@ const Category = require('../models/Category');
 // @access  Private
 exports.getServices = async (req, res) => {
     try {
-        const { search, category_id } = req.query;
+        const { search } = req.query;
+        // Spec says: /api/services?category=...&search=...
+        const categoryParam = req.query.category || req.query.category_id;
+        const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit || '10', 10), 1), 100);
+        const skip = (page - 1) * limit;
         let query = { provider: req.user.id };
 
         if (search) {
             query.service_name = { $regex: search, $options: 'i' };
         }
 
-        if (category_id) {
-            query.category = category_id;
+        if (categoryParam) {
+            query.category = categoryParam;
         }
 
-        const services = await Service.find(query)
-            .populate('category', 'title')
-            .sort({ createdAt: -1 });
+        const [total, services] = await Promise.all([
+            Service.countDocuments(query),
+            Service.find(query)
+                .populate('category', 'title')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+        ]);
 
-        res.json(services);
+        res.json({
+            data: services,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }

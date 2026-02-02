@@ -42,6 +42,38 @@ exports.getProviderServices = async (req, res) => {
     }
 };
 
+// @desc    Get provider services for public page by slug (exam spec: /services/:slug)
+// @route   GET /api/public/services/:slug
+// @access  Public
+exports.getProviderServicesBySlug = async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        const provider = await User.findOne({ slug }).select('full_name company_name email phone slug');
+        if (!provider) {
+            return res.status(404).json({ message: 'Provider not found' });
+        }
+
+        const providerId = provider._id;
+
+        const categories = await Category.find({ provider: providerId, status: 'active' });
+        const services = await Service.find({ provider: providerId });
+
+        const catalog = categories.map(cat => {
+            const catServices = services.filter(s => s.category.toString() === cat._id.toString());
+            return {
+                ...cat.toObject(),
+                services: catServices
+            };
+        });
+
+        res.json({ provider, catalog });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 // @desc    Submit a service request
 // @route   POST /api/public/request
 // @access  Public

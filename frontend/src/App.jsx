@@ -18,6 +18,7 @@ function App() {
         <Route path="/categories" element={<Categories />} />
         <Route path="/services" element={<Services />} />
         <Route path="/requests" element={<Requests />} />
+        <Route path="/services/:slug" element={<PublicCatalog />} />
         <Route path="/public/:providerId" element={<PublicCatalog />} />
       </Routes>
     </Router>
