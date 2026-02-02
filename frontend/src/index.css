@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+.PhoneInput {
+    display: flex;
+    align-items: center;
+}
+
+.PhoneInputInput {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    padding: 0.5rem;
+}
+
+.PhoneInputInput:focus {
+    outline: none;
+}
